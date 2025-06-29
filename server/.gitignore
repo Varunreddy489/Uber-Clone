@@ -1,0 +1,8 @@
+
+.env
+node_modules
+combines.log
+src/config/config.json
+
+
+dist/
