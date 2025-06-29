@@ -6,3 +6,5 @@ src/config/config.json
 
 
 dist/
+
+/src/generated/prisma
