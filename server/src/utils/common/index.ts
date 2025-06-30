@@ -1,6 +1,3 @@
-export const SuccessResponse = {
-  success: true,
-  message: "Successfully completed the response",
-  data: {},
-  error: {},
-};
+
+export * from "./error.response";
+export * from "./success.response";
