@@ -29,3 +29,36 @@ export const genLongitude = (): number => {
 export const genLatitude = (): number => {
   return parseFloat(faker.number.float({ min: 8.4, max: 37.6 }).toFixed(6));
 };
+
+export const genUserId = () => {
+  const id = [
+    "cmdwuixdw0002tudorkhwiexf",
+    "cmdwuixdw0003tudobqgj7hr3",
+    "cmdwuixdw0004tudokdtnob32",
+    "cmdwuixdw0006tudo5kag578v",
+    "cmdwuixdw0009tudobggonomd",
+  ];
+
+  const number = Math.floor(Math.random() * id.length);
+  return id[number];
+};
+
+export const genRating = () => {
+  return faker.number.int({ min: 1, max: 5 });
+};
+
+export const genTotalRides = () => {
+  return faker.number.int({ min: 0, max: 100 });
+};
+
+export const genTotalEarnings = () => {
+  return faker.number.int({ min: 0, max: 1000000 }) / 100;
+};
+
+export const genTotalDistance = () => {
+  return faker.number.int({ min: 0, max: 100 }) / 10;
+};
+
+export const genTotalTime = () => {
+  return faker.number.int({ min: 1000, max: 1000000 }) / 10;
+};
