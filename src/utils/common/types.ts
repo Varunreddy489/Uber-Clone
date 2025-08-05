@@ -12,3 +12,8 @@ export type User = {
   updatedAt: Date;
 };
 
+export type DriverLocation = {
+  driverId: string;
+  longitude: number;
+  latitude: number;
+};
