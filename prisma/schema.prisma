@@ -14,6 +14,14 @@ enum VehicleType {
   LUXURY
 }
 
+enum RideStatus {
+  PENDING
+  ACCEPTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id           String  @id @default(cuid())
   email        String  @unique
@@ -29,6 +37,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   Driver    Driver?
+  ride      ride[]
 }
 
 model Driver {
@@ -50,6 +59,7 @@ model Driver {
   updatedAt DateTime @updatedAt
 
   user    User     @relation(fields: [userId], references: [id])
+  ride    ride[]
   vehicle vehicle?
 }
 
@@ -65,4 +75,35 @@ model vehicle {
   updatedAt DateTime @updatedAt
 
   driver Driver @relation(fields: [driverId], references: [id])
+}
+
+model ride {
+  id       String @id @default(cuid())
+  userId   String
+  driverId String
+
+  start_latitude  Float
+  start_longitude Float
+
+  end_latitude  Float
+  end_longitude Float
+
+  rideType VehicleType
+
+  status RideStatus @default(PENDING)
+
+  requestedAt DateTime  @default(now())
+  acceptedAt  DateTime?
+  pickupTime  DateTime
+  dropTime    DateTime?
+
+  distance Float
+  duration Float
+  fare     Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 }
