@@ -94,11 +94,11 @@ model ride {
 
   requestedAt DateTime  @default(now())
   acceptedAt  DateTime?
-  pickupTime  DateTime
+  pickupTime  DateTime?
   dropTime    DateTime?
 
   distance Float
-  duration Float
+  duration Float?
   fare     Float
 
   createdAt DateTime @default(now())

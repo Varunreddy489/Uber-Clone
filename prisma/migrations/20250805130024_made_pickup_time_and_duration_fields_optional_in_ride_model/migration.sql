@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ride" ALTER COLUMN "pickupTime" DROP NOT NULL,
+ALTER COLUMN "duration" DROP NOT NULL;
