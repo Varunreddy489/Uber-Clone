@@ -8,6 +8,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum VehicleType {
+  ECONOMY
+  PREMIUM
+  LUXURY
+}
+
 model User {
   id           String  @id @default(cuid())
   email        String  @unique
@@ -43,5 +49,20 @@ model Driver {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  vehicle vehicle?
+}
+
+model vehicle {
+  id           String      @id @default(cuid())
+  driverId     String      @unique
+  vehicleType  VehicleType
+  vehicleNo    String      @unique
+  seatCapacity Int
+  isActive     Boolean     @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  driver Driver @relation(fields: [driverId], references: [id])
 }
