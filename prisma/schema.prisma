@@ -37,8 +37,7 @@ model User {
   role         String  @default("USER")
   isActive     Boolean @default(true)
 
-  curr_longitude Float? @default(0)
-  curr_latitude  Float? @default(0)
+  location String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,8 +54,7 @@ model Driver {
   isActive     Boolean @default(true)
   driverStatus String  @default("AVAILABLE")
 
-  curr_longitude Float? @default(0)
-  curr_latitude  Float? @default(0)
+  location String
 
   total_rides    Int   @default(0)
   total_earnings Float @default(0)
@@ -90,11 +88,9 @@ model ride {
   userId   String
   driverId String
 
-  start_latitude  Float
-  start_longitude Float
+  curr_location String
 
-  end_latitude  Float
-  end_longitude Float
+  destionation String
 
   rideType VehicleType
 
