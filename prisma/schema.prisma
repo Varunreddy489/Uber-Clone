@@ -22,6 +22,12 @@ enum RideStatus {
   CANCELLED
 }
 
+enum DriverStatus {
+  AVAILABLE
+  UNAVAILABLE
+  ON_RIDE
+}
+
 model User {
   id           String  @id @default(cuid())
   email        String  @unique
@@ -41,11 +47,13 @@ model User {
 }
 
 model Driver {
-  id           String  @id @default(cuid())
-  userId       String  @unique
-  phone_number String  @unique
-  rating       String  @default("0")
+  id           String @id @default(cuid())
+  userId       String @unique
+  phone_number String @unique
+  rating       String @default("0")
+
   isActive     Boolean @default(true)
+  driverStatus String  @default("AVAILABLE")
 
   curr_longitude Float? @default(0)
   curr_latitude  Float? @default(0)

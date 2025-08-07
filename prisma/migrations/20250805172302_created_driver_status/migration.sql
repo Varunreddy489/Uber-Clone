@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "DriverStatus" AS ENUM ('AVAILABLE', 'UNAVAILABLE', 'ON_RIDE');
+
+-- AlterTable
+ALTER TABLE "Driver" ADD COLUMN     "driverStatus" TEXT NOT NULL DEFAULT 'AVAILABLE';
