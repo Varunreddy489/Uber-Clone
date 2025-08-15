@@ -1,3 +1,5 @@
+import { RideRequestStatus, VehicleType } from "../../generated/prisma";
+
 export type User = {
   id: string;
   name: string;
@@ -12,8 +14,34 @@ export type User = {
   updatedAt: Date;
 };
 
+export type NearbyDriver = {
+  id: string;
+  currentLat: number;
+  currentLng: number;
+  vehicleType: string;
+  vehicleNo: string;
+  seatCapacity: number;
+  isActive: boolean;
+  distance: number;
+};
 export type DriverLocation = {
   driverId: string;
   longitude: number;
   latitude: number;
+};
+
+export type RideRequestTypes = {
+  userId: string;
+  driverId: string;
+  destination: string;
+  userLocation: string;
+  fare: number;
+  distance: number;
+  vehicleType: VehicleType;
+};
+
+export type UpdateReqStatus = {
+  rideId: string;
+  rideRequestId: string;
+  status: RideRequestStatus;
 };

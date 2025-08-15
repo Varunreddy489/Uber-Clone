@@ -20,8 +20,8 @@ export const initSocket = (io: Server) => {
         await prisma.driver.update({
           where: { id: data.driverId },
           data: {
-            curr_latitude: data.latitude,
-            curr_longitude: data.longitude,
+            curr_lat: data.latitude,
+            curr_long: data.longitude,
           },
         });
 
