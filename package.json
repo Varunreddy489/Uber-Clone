@@ -17,6 +17,7 @@
     "@faker-js/faker": "^9.9.0",
     "@prisma/client": "^6.11.1",
     "@types/nodemailer": "^6.4.17",
+    "axios": "^1.11.0",
     "concurrently": "^9.2.0",
     "cors": "^2.8.5",
     "dayjs": "^1.11.13",
