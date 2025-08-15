@@ -62,3 +62,16 @@ export const genTotalDistance = () => {
 export const genTotalTime = () => {
   return faker.number.int({ min: 1000, max: 1000000 }) / 10;
 };
+
+export const genVehicleType = () => {
+  return faker.helpers.arrayElement(["ECONOMY", "PREMIUM", "LUXURY"]);
+};
+
+export const genVehicleNo = () => {
+  return faker.number.int({ min: 1000, max: 9999 });
+};
+
+export const seatCapacity = () => {
+  return faker.number.int({ min: 1, max: 6 });
+};
+

@@ -1,11 +1,8 @@
 import { logger, prisma } from "../config";
 import {
-  genEmail,
   genIsActive,
   genLatitude,
   genLongitude,
-  genName,
-  genPassword,
   genPhoneNumber,
   genRating,
   genTotalDistance,
