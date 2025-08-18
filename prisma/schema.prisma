@@ -36,27 +36,62 @@ enum RideRequestStatus {
   CANCELLED
 }
 
+enum UserRoles {
+  USER
+  DRIVER
+  ADMIN
+}
+
 model User {
-  id           String  @id @default(cuid())
-  email        String  @unique
+  id           String @id @default(cuid())
+  email        String @unique
   name         String
-  phone_number String  @unique
+  phone_number String @unique
   password     String
-  role         String  @default("USER")
-  isActive     Boolean @default(true)
+  role         String @default("USER")
 
-  location String?
+  // Profile information
+  profileImage String?
+  dateOfBirth  DateTime?
+  gender       String?
 
+  // Verification fields
+  isEmailVerified Boolean   @default(false)
+  isPhoneVerified Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+
+  // Location 
+  location  String?
   curr_lat  Float?
   curr_long Float?
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  Driver      Driver?
-  ride        ride[]
-  RideRequest RideRequest[]
+  // Security fields
+  lastLoginAt       DateTime?
+  failedLoginCount  Int       @default(0)
+  lastFailedLoginAt DateTime?
+  passwordChangedAt DateTime?
+
+  // Temporary fields for verification
+  emailVerificationToken String?
+  phoneVerificationOtp   Int?
+  otpExpiresAt           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+
+  Driver        Driver?
+  RefreshToken  RefreshToken[]
+  PasswordReset PasswordReset[]
+  ride          ride[]
+  RideRequest   RideRequest[]
+  LoginAttempt  LoginAttempt[]
 
   @@index([id, phone_number])
+  @@index([email])
+  @@index([role])
 }
 
 model Driver {
@@ -68,15 +103,21 @@ model Driver {
   isActive     Boolean @default(true)
   driverStatus String  @default("AVAILABLE")
 
-  location String?
-
+  // Location
+  location  String?
   curr_lat  Float?
   curr_long Float?
 
-  total_rides    Int   @default(0)
-  total_earnings Float @default(0)
-  total_distance Float @default(0)
-  total_time     Float @default(0)
+  // Driver metrics
+  total_rides     Int   @default(0)
+  total_earnings  Float @default(0.0)
+  total_distance  Float @default(0.0)
+  total_time      Int   @default(0) // in minutes
+  completion_rate Float @default(0.0)
+  acceptance_rate Float @default(0.0)
+
+  // Driver verification
+  isVerified Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -88,12 +129,18 @@ model Driver {
 
   @@index([driverStatus])
   @@index([curr_lat, curr_long])
+  @@index([isVerified])
 }
 
 model vehicle {
   id           String      @id @default(cuid())
   driverId     String      @unique
   vehicleType  VehicleType
+  /**
+   * make         String
+   * Vehicle_Image String
+   * model        String
+   */
   vehicleNo    String      @unique
   seatCapacity Int
   isActive     Boolean     @default(true)
@@ -102,19 +149,32 @@ model vehicle {
   updatedAt DateTime @updatedAt
 
   driver Driver @relation(fields: [driverId], references: [id])
+  // rides  Ride[]
+
+  // @@index([driverId])
+  // @@index([vehicleType])
+  // @@index([isActive])
 }
 
 model ride {
   id       String @id @default(cuid())
   userId   String
   driverId String
+  // vehicleId String?
 
   curr_location String
   destination   String
 
-  rideType VehicleType
+  // // Location details
+  // pickupLocation     String
+  // pickupLatitude     Float
+  // pickupLongitude    Float
+  // destinationAddress String
+  // destinationLat     Float
+  // destinationLong    Float
 
-  status RideStatus @default(PENDING)
+  rideType VehicleType
+  status   RideStatus  @default(PENDING)
 
   requestedAt DateTime  @default(now())
   acceptedAt  DateTime?
@@ -124,6 +184,22 @@ model ride {
   distance Float
   duration Float?
   fare     Float
+
+  // // Distance and fare
+  // estimatedDistance Float // in km
+  // actualDistance    Float? // in km
+  // estimatedDuration Int // in minutes
+  // actualDuration    Int? // in minutes
+  // baseFare          Float
+  // distanceFare      Float  @default(0.0)
+  // timeFare          Float  @default(0.0)
+  // surgeFare         Float  @default(0.0)
+  // totalFare         Float
+
+  // // Trip details
+  // otp                String?   // OTP for ride verification
+  // cancellationReason String?
+  // cancelledBy        String?   // USER or DRIVER
 
   // Only ride owns the foreign key to RideRequest
   rideRequestId String?      @unique
@@ -163,3 +239,54 @@ model RideRequest {
   @@index([driverId, status])
   @@index([createdAt])
 }
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isUsed    Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id            String   @id @default(cuid())
+  userId        String? // Null for failed attempts with non-existent users
+  email         String?
+  phoneNumber   String?
+  ipAddress     String
+  userAgent     String?
+  success       Boolean
+  failureReason String?
+  createdAt     DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, success, createdAt])
+  @@index([ipAddress, createdAt])
+  @@index([email, success, createdAt])
+  @@index([phoneNumber, success, createdAt])
+  @@map("login_attempts")
+}
+
+// Todo:Payment Model
+// Todo:Wallet Model
+// Todo:Wallet Transactions Model
