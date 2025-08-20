@@ -85,7 +85,7 @@ model User {
   Driver        Driver?
   RefreshToken  RefreshToken[]
   PasswordReset PasswordReset[]
-  ride          ride[]
+  ride          Ride[]
   RideRequest   RideRequest[]
   LoginAttempt  LoginAttempt[]
 
@@ -117,14 +117,17 @@ model Driver {
   acceptance_rate Float @default(0.0)
 
   // Driver verification
-  isVerified Boolean @default(false)
+  LicenseNumber String?
+  LicenseImage  String?
+  Proof         String?
+  isVerified    Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user        User          @relation(fields: [userId], references: [id])
-  ride        ride[]
-  vehicle     vehicle?
+  ride        Ride[]
+  vehicle     Vehicle?
   RideRequest RideRequest[]
 
   @@index([driverStatus])
@@ -132,35 +135,34 @@ model Driver {
   @@index([isVerified])
 }
 
-model vehicle {
-  id           String      @id @default(cuid())
-  driverId     String      @unique
-  vehicleType  VehicleType
-  /**
-   * make         String
-   * Vehicle_Image String
-   * model        String
-   */
-  vehicleNo    String      @unique
+model Vehicle {
+  id          String      @id @default(cuid())
+  driverId    String      @unique
+  vehicleType VehicleType
+
+  company      String
+  vehicleImage String
+  model        String
+  vehicleNo    String  @unique
   seatCapacity Int
-  isActive     Boolean     @default(true)
+  isActive     Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   driver Driver @relation(fields: [driverId], references: [id])
-  // rides  Ride[]
+  rides  Ride[]
 
-  // @@index([driverId])
-  // @@index([vehicleType])
-  // @@index([isActive])
+  @@index([isActive])
+  @@index([driverId])
+  @@index([vehicleType])
 }
 
-model ride {
-  id       String @id @default(cuid())
-  userId   String
-  driverId String
-  // vehicleId String?
+model Ride {
+  id        String  @id @default(cuid())
+  userId    String
+  driverId  String
+  vehicleId String? @unique
 
   curr_location String
   destination   String
@@ -202,14 +204,16 @@ model ride {
   // cancelledBy        String?   // USER or DRIVER
 
   // Only ride owns the foreign key to RideRequest
-  rideRequestId String?      @unique
-  rideRequest   RideRequest? @relation(fields: [rideRequestId], references: [id])
+  rideRequestId String? @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  driver Driver @relation(fields: [driverId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
+  // Relations
+  user        User         @relation(fields: [userId], references: [id])
+  driver      Driver       @relation(fields: [driverId], references: [id])
+  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
+  rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id])
 
   @@index([status])
   @@index([driverId, status])
@@ -233,7 +237,7 @@ model RideRequest {
 
   user   User   @relation(fields: [userId], references: [id])
   driver Driver @relation(fields: [driverId], references: [id])
-  ride   ride?
+  ride   Ride?
 
   @@index([userId, status])
   @@index([driverId, status])
