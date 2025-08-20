@@ -45,3 +45,20 @@ export type UpdateReqStatus = {
   rideRequestId: string;
   status: RideRequestStatus;
 };
+
+export type SendEmailParams = {
+  toMail: string;
+  subject: string;
+  body: string;
+};
+
+declare global {
+  namespace Express {
+    export interface Request {
+      user: {
+        userId: string;
+        role: string;
+      };
+    }
+  }
+}

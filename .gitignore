@@ -1,7 +1,6 @@
 node_modules
-# Keep environment variables out of version control
 .env
-
+/.idea
 /src/generated/prisma
 
 /dist
@@ -9,3 +8,5 @@ node_modules
 error.log
 
 combines.log
+
+UBER ARCHITECTURE.jpeg
