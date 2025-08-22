@@ -227,6 +227,7 @@ export const createRide = async (req: Request, res: Response) => {
         },
       });
 
+      // Todo: Increment the count of rides,earnings,distance and time for the driver
       await tx.driver.update({
         where: { id: driverId },
         data: { driverStatus: DriverStatus.UNAVAILABLE },
