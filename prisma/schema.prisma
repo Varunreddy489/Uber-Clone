@@ -48,6 +48,16 @@ enum RoleChangeRequestTypes {
   REJECTED
 }
 
+// enum NotificationType {
+//   RIDE_REQUEST
+//   RIDE_ACCEPTED
+//   RIDE_COMPLETED
+//   PAYMENT_RECEIVED
+//   DRIVER_VERIFICATION
+//   SYSTEM_ALERT
+//   PROMOTIONAL
+// }
+
 model User {
   id           String @id @default(cuid())
   email        String @unique
@@ -174,13 +184,13 @@ model Ride {
   curr_location String
   destination   String
 
-  // // Location details
-  // pickupLocation     String
-  // pickupLatitude     Float
-  // pickupLongitude    Float
-  // destinationAddress String
-  // destinationLat     Float
-  // destinationLong    Float
+  // Location details
+  pickupLocation     String
+  pickupLatitude     Float
+  pickupLongitude    Float
+  destinationAddress String
+  destinationLat     Float
+  destinationLong    Float
 
   rideType VehicleType
   status   RideStatus  @default(PENDING)
@@ -194,21 +204,21 @@ model Ride {
   duration Float?
   fare     Float
 
-  // // Distance and fare
-  // estimatedDistance Float // in km
-  // actualDistance    Float? // in km
-  // estimatedDuration Int // in minutes
-  // actualDuration    Int? // in minutes
-  // baseFare          Float
-  // distanceFare      Float  @default(0.0)
-  // timeFare          Float  @default(0.0)
-  // surgeFare         Float  @default(0.0)
-  // totalFare         Float
+  // Distance and fare
+  estimatedDistance Float // in km
+  actualDistance    Float? // in km
+  estimatedDuration Int // in minutes
+  actualDuration    Int? // in minutes
+  baseFare          Float
+  distanceFare      Float  @default(0.0)
+  timeFare          Float  @default(0.0)
+  surgeFare         Float  @default(0.0)
+  totalFare         Float
 
-  // // Trip details
-  // otp                String?   // OTP for ride verification
-  // cancellationReason String?
-  // cancelledBy        String?   // USER or DRIVER
+  // Trip details
+  otp                String? // OTP for ride verification
+  cancellationReason String?
+  cancelledBy        String? // USER or DRIVER
 
   // Only ride owns the foreign key to RideRequest
   rideRequestId String? @unique
@@ -308,6 +318,21 @@ model RoleChangeRequest {
 
   user User @relation(fields: [userId], references: [id])
 }
+
+// model Notifications {
+//   id        String   @id @default(cuid())
+//   userId    String
+//   title     String
+//   message   String
+//   isRead    Boolean  @default(false)
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+
+//   user User @relation(fields: [userId], references: [id])
+
+//   @@index([userId, isRead])
+//   @@index([createdAt])
+// }
 
 // Todo:Payment Model
 // Todo:Wallet Model
