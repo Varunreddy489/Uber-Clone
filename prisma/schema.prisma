@@ -48,15 +48,15 @@ enum RoleChangeRequestTypes {
   REJECTED
 }
 
-// enum NotificationType {
-//   RIDE_REQUEST
-//   RIDE_ACCEPTED
-//   RIDE_COMPLETED
-//   PAYMENT_RECEIVED
-//   DRIVER_VERIFICATION
-//   SYSTEM_ALERT
-//   PROMOTIONAL
-// }
+enum NotificationType {
+  RIDE_REQUEST
+  RIDE_ACCEPTED
+  RIDE_COMPLETED
+  PAYMENT_RECEIVED
+  DRIVER_VERIFICATION
+  SYSTEM_ALERT
+  PROMOTIONAL
+}
 
 model User {
   id           String @id @default(cuid())
@@ -105,6 +105,9 @@ model User {
   RideRequest       RideRequest[]
   LoginAttempt      LoginAttempt[]
   RoleChangeRequest RoleChangeRequest[]
+  Notifications     Notifications[]
+  Wallet            Wallet?
+  Payment           Payment[]
 
   @@index([id, phone_number])
   @@index([email])
@@ -231,6 +234,7 @@ model Ride {
   driver      Driver       @relation(fields: [driverId], references: [id])
   vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
   rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id])
+  Payment     Payment[]
 
   @@index([status])
   @@index([driverId, status])
@@ -319,21 +323,110 @@ model RoleChangeRequest {
   user User @relation(fields: [userId], references: [id])
 }
 
-// model Notifications {
-//   id        String   @id @default(cuid())
-//   userId    String
-//   title     String
-//   message   String
-//   isRead    Boolean  @default(false)
-//   createdAt DateTime @default(now())
-//   updatedAt DateTime @updatedAt
+model Notifications {
+  id      String  @id @default(cuid())
+  userId  String
+  title   String
+  message String
+  isRead  Boolean @default(false)
 
-//   user User @relation(fields: [userId], references: [id])
+  category String?
 
-//   @@index([userId, isRead])
-//   @@index([createdAt])
-// }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-// Todo:Payment Model
-// Todo:Wallet Model
-// Todo:Wallet Transactions Model
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model Wallet {
+  id      String  @id @default(cuid())
+  userId  String  @unique
+  balance Decimal @default(0.0) @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user              User                @relation(fields: [userId], references: [id])
+  WalletTransaction WalletTransaction[]
+
+  @@index([userId])
+}
+
+model WalletTransaction {
+  id              String          @id @default(cuid())
+  walletId        String
+  amount          Decimal         @db.Decimal(10, 2)
+  transactionType TransactionType // CREDIT or DEBIT
+  description     String?
+
+  // Securiity Audit  
+  referenceId     String? @unique // External reference
+  parentPaymentId String? // Link to payment if applicable
+  balanceBefore   Decimal @db.Decimal(10, 2)
+  balanceAfter    Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+
+  wallet  Wallet   @relation(fields: [walletId], references: [id])
+  payment Payment? @relation(fields: [parentPaymentId], references: [id])
+
+  @@index([walletId, createdAt])
+  @@index([referenceId])
+  @@index([transactionType, createdAt])
+}
+
+model Payment {
+  id     String        @id @default(cuid())
+  userId String
+  rideId String
+  amount Decimal       @default(100.0) @db.Decimal(10, 2)
+  method PaymentMethod
+  status PaymentStatus
+
+  // Payment Gateway Integration
+  gatewayTxnId    String? @unique // Payment gateway transaction ID
+  gatewayResponse Json? // Gateway response data
+
+  // Security & Audit
+  failureReason String?
+  refundAmount  Decimal?  @db.Decimal(10, 2)
+  refundedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user              User                @relation(fields: [userId], references: [id])
+  ride              Ride                @relation(fields: [rideId], references: [id])
+  WalletTransaction WalletTransaction[]
+
+  @@index([userId, status])
+  @@index([rideId])
+  @@index([gatewayTxnId])
+  @@index([status, createdAt])
+}
+
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  UPI
+  WALLET
+  BANK_TRANSFER
+  CASH
+}
