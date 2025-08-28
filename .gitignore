@@ -29,3 +29,7 @@ jest.config.js
 /playwright/.cache/
 
 settings.json
+
+
+rideStatus.ts
+cron.ts

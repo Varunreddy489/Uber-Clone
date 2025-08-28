@@ -38,7 +38,7 @@ export const changeRole = async (req: Request, res: Response) => {
       toMail: isUser.email,
       subject: "Role Change Request",
       body: `
-      <h1>We Recieved Your Role Change Request</h1>
+      <h1>We Received Your Role Change Request</h1>
       <p> We Will verify and let you know </p>
       `,
     };
@@ -56,15 +56,75 @@ export const changeRole = async (req: Request, res: Response) => {
   }
 };
 
-
-export const uploadDocs=async(req:Request,res:Response)=>{
+export const getUserById = async (req: Request, res: Response) => {
   try {
-    
+    const { userId } = req.params;
 
-  } catch (error:any) {
+    if (!userId) {
+      ErrorResponse.error = "User ID is required";
+      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
+      return;
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        phone_number: true,
+        gender: true,
+        profileImage: true,
+        dateOfBirth: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      ErrorResponse.error = "User not found";
+      res.status(StatusCodes.NOT_FOUND).json(ErrorResponse);
+      return;
+    }
+
+    const userRideData = await prisma.rideRequest.findMany({
+      where: {
+        userId: userId,
+      },
+      select: {
+        id: true,
+        userLocation: true,
+        destination: true,
+        fare: true,
+        distance: true,
+        vehicleType: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!userRideData) {
+      ErrorResponse.error = "User not found";
+      res.status(StatusCodes.NOT_FOUND).json(ErrorResponse);
+      return;
+    }
+
+    SuccessResponse.data = {
+      user,
+      userRideData,
+    };
+
+    SuccessResponse.message = "User fetched successfully";
+    res.status(StatusCodes.OK).json(SuccessResponse);
+    return;
+  } catch (error: any) {
     ErrorResponse.error = error;
-    logger.error("Error in uploadDocs:", error);
+    logger.error("Error in getUserById:", error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json(ErrorResponse);
     return;
   }
-}
+};

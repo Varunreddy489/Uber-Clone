@@ -3,6 +3,10 @@ import {
   createDriver,
   updateDriversLocationController,
   getAllAvailableDriversController,
+  getDriverByIdController,
+  toggleDriverStatusController,
+  getStatus,
+  registerVehicle,
 } from "../../controllers";
 import { uploadMiddleware } from "../../middleware";
 import { uploadRateLimit } from "../../utils/common";
@@ -15,7 +19,7 @@ router.get("/", getAllAvailableDriversController);
 // & /api/v1/driver/:driverId PUT
 router.put("/:driverId", updateDriversLocationController);
 
-// & /api/v1/driver/:driverId/upload-docs PUT
+// & /api/v1/driver/:driverId/create PUT
 router.put(
   "/:driverId/upload-docs",
   uploadRateLimit,
@@ -25,5 +29,17 @@ router.put(
   ]),
   createDriver
 );
+
+// * /api/v1/driver/:driverId GET
+router.get("/:driverId", getDriverByIdController);
+
+// & /api/v1/driver/:driverId/status PUT
+router.put("/:driverId/status", toggleDriverStatusController);
+
+// * /api/v1/driver/:driverId/status GET
+router.get("/:driverId/status", getStatus);
+
+// ~ /api/v1/driver/:driverId/vehicle POST
+router.post("/:driverId", registerVehicle);
 
 export { router as driverRoutes };

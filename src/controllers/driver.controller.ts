@@ -8,7 +8,7 @@ import {
   sendEmail,
   updateDriversLocation,
 } from "../services";
-import { logger, prisma } from "../config";
+import { logger, prisma, redisClient } from "../config";
 import { ErrorResponse, SuccessResponse } from "../utils/common";
 
 /**
@@ -25,6 +25,12 @@ export const updateDriversLocationController = async (
     const { location } = req.body;
 
     const updatedDriver = await updateDriversLocation(driverId, location);
+
+    if (!updatedDriver) {
+      ErrorResponse.error = "Failed to update driver location";
+      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
+      return;
+    }
 
     SuccessResponse.data = updatedDriver;
     logger.info(`updated ${driverId} location to ${updatedDriver}`);
@@ -134,19 +140,19 @@ export const createDriver = async (req: Request, res: Response) => {
       [fieldname: string]: Express.Multer.File[];
     };
 
-    const licenceImage = files["LicenceImage"]?.[0];
+    const licenseImage = files["LicenseImage"]?.[0];
     const govtProof = files["govt_proof"]?.[0];
 
-    if (!licenceImage || !govtProof) {
+    if (!licenseImage || !govtProof) {
       ErrorResponse.error = "All fields are required";
       res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
       return;
     }
 
-    const licence_url = await cloudinaryService(licenceImage.path);
+    const license_url = await cloudinaryService(licenseImage.path);
     const govt_url = await cloudinaryService(govtProof.path);
 
-    await fs.unlink(licenceImage.path);
+    await fs.unlink(licenseImage.path);
     await fs.unlink(govtProof.path);
 
     const driver = await prisma.driver.create({
@@ -154,18 +160,18 @@ export const createDriver = async (req: Request, res: Response) => {
         userId,
         phone_number: user?.phone_number,
         LicenseNumber,
-        LicenseImage: licence_url,
+        LicenseImage: license_url,
         Proof: govt_url,
       },
     });
 
     const emailPayload = {
       toMail: user.email,
-      subject: "We Recieved Your Application",
+      subject: "We Received Your Application",
       body: `
       <div style="background-color: #f2f2f2; padding: 20px; text-align: center;">
       <p style="color: #666;">Hello ${user.name},</p>
-        <p style="color: #333;">We Recieved Your Application.We will verify and approve your appplication soon.  </p>`,
+        <p style="color: #333;">We Received Your Application.We will verify and approve your application soon.  </p>`,
     };
 
     await sendEmail(emailPayload);
@@ -181,6 +187,7 @@ export const createDriver = async (req: Request, res: Response) => {
     return;
   }
 };
+
 export const toggleDriverStatusController = async (
   req: Request,
   res: Response
@@ -231,7 +238,7 @@ export const getStatus = async (req: Request, res: Response) => {
   }
 };
 
-export const registerVechicle = async (req: Request, res: Response) => {
+export const registerVehicle = async (req: Request, res: Response) => {
   try {
     const { driverId } = req.params;
     const { vehicleNo, vehicleType, company, model, seatCapacity } = req.body;

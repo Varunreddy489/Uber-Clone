@@ -19,13 +19,13 @@ export const vehicleSeed = async () => {
       seatCapacity: seatCapacity(),
     }));
 
-    const result = await prisma.vehicle.createMany({
-      data: vehicles,
-      skipDuplicates: true,
-    });
+    // const result = await prisma.vehicle.createMany({
+    //   data: vehicles,
+    //   skipDuplicates: true,
+    // });
 
-    logger.info(`Seeded ${result.count} Vehicles`);
-    console.log(`Seeded ${result.count} Vehicles`);
+    // logger.info(`Seeded ${result.count} Vehicles`);
+    // console.log(`Seeded ${result.count} Vehicles`);
   } catch (error: any) {
     logger.error("Error seeding drivers:", error);
     console.error("Error seeding drivers:", error);
