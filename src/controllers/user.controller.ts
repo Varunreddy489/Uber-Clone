@@ -98,7 +98,7 @@ export const getUserById = async (req: Request, res: Response) => {
         id: true,
         userLocation: true,
         destination: true,
-        fare: true,
+        totalFare: true,
         distance: true,
         vehicleType: true,
         status: true,
