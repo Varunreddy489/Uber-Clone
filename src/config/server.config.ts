@@ -1,10 +1,45 @@
 import dotenv from "dotenv";
+import { envSchema } from "../validations";
 dotenv.config();
 
-export const PORT = process.env.PORT || 5000;
-export const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:3000";
+// Parse and validate
+const env = envSchema.parse(process.env);
 
-// export const config = {
-//   PORT: Number(process.env.PORT) ?? 8080,
-//   CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:3000",
-// };
+export const serverConfig = {
+  PORT: Number(env.PORT),
+  CORS_ORIGIN: env.CORS_ORIGIN,
+
+  DATABASE_URL: env.DATABASE_URL,
+  GOOGLE_MAPS_KEY: env.GOOGLE_MAPS_KEY,
+  OPEN_WEATHER_KEY: env.OPEN_WEATHER_KEY,
+
+  API_URL: env.API_URL,
+
+  RATE_LIMIT_WINDOW_MS: Number(env.RATE_LIMIT_WINDOW_MS),
+
+  ADMIN_ID: env.ADMIN_ID,
+
+  JWT_SECRET_KEY: env.JWT_SECRET_KEY,
+  JWT_REFRESH_SECRET: env.JWT_REFRESH_SECRET,
+  JWT_EXPIRES_IN: env.JWT_EXPIRES_IN,
+  JWT_REFRESH_EXPIRES_IN: env.JWT_REFRESH_EXPIRES_IN,
+  BCRYPT_ROUNDS: Number(env.BCRYPT_ROUNDS),
+
+  TWILIO_ACCOUNT_SID: env.TWILIO_ACCOUNT_SID,
+  TWILIO_AUTH_TOKEN: env.TWILIO_AUTH_TOKEN,
+  TWILIO_SERVICE_SID: env.TWILIO_SERVICE_SID,
+
+  SMTP_HOST: env.SMTP_HOST,
+  SMTP_PORT: Number(env.SMTP_PORT),
+  SMTP_USER: env.SMTP_USER,
+  SMTP_PASS: env.SMTP_PASS,
+  FROM_EMAIL: env.FROM_EMAIL,
+
+  CLOUDINARY_URL: env.CLOUDINARY_URL,
+  CLOUDINARY_CLOUD_NAME: env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: env.CLOUDINARY_API_SECRET,
+
+  REDIS_HOST: env.REDIS_HOST,
+  REDIS_PORT: env.REDIS_PORT ? Number(env.REDIS_PORT) : undefined,
+};
