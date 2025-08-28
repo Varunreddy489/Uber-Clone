@@ -1,48 +1,160 @@
 import { StatusCodes } from "http-status-codes";
-import { logger, prisma } from "../config";
-import {
-  NearbyDriver,
-  RideRequestTypes,
-  UpdateReqStatus,
-} from "../utils/common";
-import AppError from "../utils/errors/app.error";
-import { RideRequestStatus, RideStatus } from "../generated/prisma";
 
-export const getDriversAvilableInUserProximity = async (
+import AppError from "../utils/errors/app.error";
+import { RideRequestStatus } from "../generated/prisma";
+import { logger, prisma, redisClient } from "../config";
+import { RideRequestTypes, UpdateReqStatus } from "../utils/common";
+import { calculateEstimatedFare } from "./fare.service";
+
+// export const getDriversAvailableInUserProximity = async (
+//   userLat: number,
+//   userLng: number,
+//   radius: number
+// ): Promise<NearbyDriver[]> => {
+//   try {
+//     const drivers = await prisma.$queryRaw<NearbyDriver[]>`
+//     SELECT * FROM (
+//       SELECT D.*, V."vehicleType", V."vehicleNo", V."seatCapacity", V."isActive", (
+//               6371 * acos(
+//                 cos(radians(${userLat})) *
+//                 cos(radians(D.curr_lat)) *
+//                 cos(radians(D.curr_long) - radians(${userLng})) +
+//                 sin(radians(${userLat})) *
+//                 sin(radians(D.curr_lat))
+//               )
+//             ) AS distance
+//               FROM "Driver" D
+//           LEFT JOIN "vehicle" V ON D.id = V."driverId"
+//           WHERE
+//             D."driverStatus" = 'AVAILABLE'
+//             AND D.curr_lat IS NOT NULL
+//             AND D.curr_long IS NOT NULL
+//             AND V."isActive" = true
+//     ) AS drivers_with_distance
+//     WHERE distance <= ${radius}
+//     ORDER BY distance ASC
+//     `;
+
+//     return drivers;
+//   } catch (error: any) {
+//     logger.error("Error in getDriversAvailableInUserProximity:", error);
+
+//     throw new AppError(
+//       `Failed to find drivers within radius: ${error.message}`,
+//       StatusCodes.INTERNAL_SERVER_ERROR
+//     );
+//   }
+// };
+
+export const getDriversAvailableInUserProximity = async (
   userLat: number,
   userLng: number,
   radius: number
-): Promise<NearbyDriver[]> => {
+) => {
   try {
-    const drivers = await prisma.$queryRaw<NearbyDriver[]>`
-    SELECT * FROM (
-      SELECT D.*, V."vehicleType", V."vehicleNo", V."seatCapacity", V."isActive", (
-              6371 * acos(
-                cos(radians(${userLat})) * 
-                cos(radians(D.curr_lat)) * 
-                cos(radians(D.curr_long) - radians(${userLng})) + 
-                sin(radians(${userLat})) * 
-                sin(radians(D.curr_lat))
-              )
-            ) AS distance
-              FROM "Driver" D
-          LEFT JOIN "vehicle" V ON D.id = V."driverId"
-          WHERE 
-            D."driverStatus" = 'AVAILABLE'
-            AND D.curr_lat IS NOT NULL 
-            AND D.curr_long IS NOT NULL
-            AND V."isActive" = true
-    ) AS drivers_with_distance
-    WHERE distance <= ${radius}
-    ORDER BY distance ASC
-    `;
+    const nearByDrivers = (await redisClient.georadius(
+      "drivers:locations",
+      userLng,
+      userLat,
+      radius,
+      "km",
+      "WITHDIST"
+    )) as [string, string][];
 
-    return drivers;
+    if (nearByDrivers.length === 0) {
+      return { drivers: [], count: 0 };
+    }
+
+    // Map into typed objects
+    const nearbyDriversTyped = nearByDrivers.map(([member, distance]) => ({
+      member,
+      distance: parseFloat(distance),
+    }));
+
+    const driverIds = nearbyDriversTyped.map((d) => d.member);
+
+    const drivers = await prisma.driver.findMany({
+      where: {
+        id: {
+          in: driverIds,
+        },
+        driverStatus: "AVAILABLE",
+        isActive: true,
+      },
+      include: {
+        vehicle: true,
+      },
+    });
+
+    const driversWithDistance = drivers.map((driver) => {
+      const redisData = nearbyDriversTyped.find((d) => d.member === driver.id);
+      return {
+        ...driver,
+        distance: redisData?.distance ?? null,
+      };
+    });
+
+    // Sort by distance (closest first)
+    const sortedDrivers = driversWithDistance.sort(
+      (a, b) => (a.distance ?? 0) - (b.distance ?? 0)
+    );
+
+    return {
+      drivers: sortedDrivers,
+      count: sortedDrivers.length,
+    };
   } catch (error: any) {
-    logger.error("Error in getDriversAvilableInUserProximity:", error);
+    logger.error("Error i=n getDriversAvailableInUserProximity:", error);
 
     throw new AppError(
       `Failed to find drivers within radius: ${error.message}`,
+      StatusCodes.INTERNAL_SERVER_ERROR
+    );
+  }
+};
+export const getActiveUsersInLocation = async (
+  latitude: number,
+  longitude: number,
+  radius: number
+) => {
+  try {
+    const users = await redisClient.georadius(
+      "users:locations",
+      longitude,
+      latitude,
+      radius,
+      "km"
+    );
+
+    // const userIds = users.map((user: any) => user.member);
+    // const userLat = users.map((user: any) => user.latitude);
+    // const userLan = users.map((user: any) => user.longitude);
+
+    // const userList = await prisma.user.findMany({
+    //   where: {
+    //     id: {
+    //       in: userIds,
+    //     },
+    //     isOnline: true,
+    //   },
+    //   select: {
+    //     id: true,
+    //     name: true,
+    //     phone_number: true,
+
+    //     gender: true,
+    //     location: true,
+    //   },
+    // });
+
+    // const data = { ...userList, userLat, userLan };
+
+    return users.length;
+  } catch (error: any) {
+    logger.error("Error in getUsersInALocation:", error);
+
+    throw new AppError(
+      `Failed to find users within radius: ${error.message}`,
       StatusCodes.INTERNAL_SERVER_ERROR
     );
   }
@@ -56,6 +168,7 @@ export const requestRide = async (data: RideRequestTypes) => {
       destination,
       userLocation,
       fare,
+      userLocationCoord,
       distance,
       vehicleType,
     } = data;
@@ -66,11 +179,26 @@ export const requestRide = async (data: RideRequestTypes) => {
       !destination ||
       !userLocation ||
       !fare ||
+      !userLocationCoord ||
       !distance ||
       !vehicleType
     ) {
       throw new AppError("Driver ID is required", StatusCodes.BAD_REQUEST);
     }
+
+    const fareDetails = await calculateEstimatedFare(
+      distance,
+      vehicleType,
+      userLocationCoord.lng,
+      userLocationCoord.lat
+    );
+
+    await redisClient.geoadd(
+      "users:locations",
+      userLocationCoord.lng,
+      userLocationCoord.lat,
+      userId
+    );
 
     const result = await prisma.rideRequest.create({
       data: {
@@ -78,7 +206,14 @@ export const requestRide = async (data: RideRequestTypes) => {
         driverId,
         userLocation,
         destination,
-        fare,
+        baseFare: fareDetails.baseFare,
+        distanceFare: fareDetails.distanceFare,
+        timeFare: fareDetails.surgeCharges.time,
+        surgeFare:
+          fareDetails.surgeCharges.time +
+          fareDetails.surgeCharges.weather +
+          fareDetails.surgeCharges.demand,
+        totalFare: fareDetails.totalFare,
         distance,
         vehicleType,
         status: RideRequestStatus.PENDING,
@@ -98,7 +233,7 @@ export const requestRide = async (data: RideRequestTypes) => {
 
 export const updateRideStatus = async (data: UpdateReqStatus) => {
   try {
-    const { rideId,rideRequestId, status } = data;
+    const { rideId, rideRequestId, status } = data;
 
     const ride = await prisma.rideRequest.findUnique({
       where: { id: rideRequestId },

@@ -15,14 +15,15 @@ export type User = {
 };
 
 export type NearbyDriver = {
-  id: string;
-  currentLat: number;
-  currentLng: number;
-  vehicleType: string;
-  vehicleNo: string;
-  seatCapacity: number;
-  isActive: boolean;
-  distance: number;
+  id?: string;
+  currentLat?: number;
+  currentLng?: number;
+  vehicleType?: string;
+  vehicleNo?: string;
+  seatCapacity?: number;
+  isActive?: boolean;
+  distance?: number;
+  location?: string;
 };
 export type DriverLocation = {
   driverId: string;
@@ -35,7 +36,8 @@ export type RideRequestTypes = {
   driverId: string;
   destination: string;
   userLocation: string;
-  fare: number;
+  fare?: any;
+  userLocationCoord: any;
   distance: number;
   vehicleType: VehicleType;
 };
@@ -61,4 +63,18 @@ declare global {
       };
     }
   }
+}
+
+export interface DemandData {
+  currentRequests: number;
+  availableDrivers: number;
+  demandMultiplier: number;
+}
+
+export interface WeatherConditions {
+  rain?: boolean;
+  rainIntensity?: number;
+  snow?: boolean;
+  storm?: boolean;
+  temperature?: number;
 }

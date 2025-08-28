@@ -1,25 +1,33 @@
+import { Server } from "socket.io";
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 import {
   RideStatus,
-  VehicleType,
   DriverStatus,
   RideRequestStatus,
+  VehicleType,
 } from "../generated/prisma";
 import {
   requestRide,
+  paymentService,
   locationService,
   updateRideStatus,
-  getDriversAvilableInUserProximity,
+  calculateEstimatedFare,
+  getDriversAvailableInUserProximity,
+  getTimeService,
 } from "../services";
 import { logger, prisma } from "../config";
 import { calculateDistance } from "../helper";
 import AppError from "../utils/errors/app.error";
-import { DriverRadius } from "../utils/constants";
-import { calculateEstimatedFare } from "../helper/fareCalcuator";
+import { DriverRadius, VehicleFare } from "../utils/constants";
 import { ErrorResponse, SuccessResponse } from "../utils/common";
 
+let ioInstance: Server;
+
+export const setSocketInstance = (io: Server) => {
+  ioInstance = io;
+};
 export const getAllAvailableRides = async (req: Request, res: Response) => {
   const { location, destination } = req.params;
 
@@ -39,13 +47,15 @@ export const getAllAvailableRides = async (req: Request, res: Response) => {
 
     logger.info(`Found destination co-ord ${destCoord.lat}`);
 
-    // * Fetch all drivers location who are available and theyin the 5km range of the user
+    // * Fetch all drivers location who are available and they are in the 5km range of the user
 
-    nearByDrivers = await getDriversAvilableInUserProximity(
+    const driversResult = await getDriversAvailableInUserProximity(
       userLocation.lat,
       userLocation.lng,
       DriverRadius
     );
+
+    nearByDrivers = driversResult.drivers;
 
     const total_distance = calculateDistance(
       userLocation.lat,
@@ -65,7 +75,12 @@ export const getAllAvailableRides = async (req: Request, res: Response) => {
       isActive: driver.isActive,
       distance: driver.distance.toFixed(2),
       total_distance: total_distance,
-      estimatedFare: calculateEstimatedFare(total_distance, driver.vehicleType),
+      estimatedFare: calculateEstimatedFare(
+        total_distance,
+        driver.vehicleType,
+        userLocation.lat,
+        userLocation.lng
+      ),
       location: {
         location: driver.location,
         curr_lat: driver.curr_lat,
@@ -89,8 +104,47 @@ export const getAllAvailableRides = async (req: Request, res: Response) => {
 
 export const requestRideController = async (req: Request, res: Response) => {
   try {
-    const data = { ...req.body, ...req.params };
+    const { userId, destination, userLocation, fare, vehicleType } = req.body;
+
+    const userLocationCoord = await locationService(userLocation);
+    const destinationCoord = await locationService(destination);
+
+    const distance = calculateDistance(
+      userLocationCoord.lat,
+      userLocationCoord.lng,
+      destinationCoord.lat,
+      destinationCoord.lng
+    );
+
+    const data = { ...req.body, distance, userLocationCoord, ...req.params };
+
     const response = await requestRide(data);
+
+    // Notify the specific driver about the ride request
+    if (ioInstance && data.driverId) {
+      ioInstance.emit(`rideRequest-${data.driverId}`, {
+        type: "NEW_RIDE_REQUEST",
+        rideId: response.id,
+        userId: data.userId,
+        userLocation: data.userLocation,
+        destination: data.destination,
+        // fare: response.fare,
+        pickupLocation: data.userLocation,
+        timestamp: new Date(),
+      });
+
+      logger.info(`Ride request notification sent to driver ${data.driverId}`);
+    }
+
+    // Notify the user that request has been sent
+    if (ioInstance && data.userId) {
+      ioInstance.emit(`user-${data.userId}`, {
+        type: "RIDE_REQUEST_SENT",
+        message: "Your ride request has been sent to the driver",
+        rideId: response.id,
+        status: "PENDING",
+      });
+    }
 
     SuccessResponse.data = response;
     SuccessResponse.message = "Ride requested successfully";
@@ -104,17 +158,13 @@ export const requestRideController = async (req: Request, res: Response) => {
 };
 
 /**
- * 
- * @param req 
- * @param res 
- * @description Takes the driverId and status as params
- * @returns Saves the type of ride and save it in Db 
+  @description Takes the driverId and status as params
+  @returns Saves the type of ride and save it in Db 
   PENDING
   ACCEPTED
   REJECTED
   TIMED_OUT
   CANCELLED
- * 
  */
 export const updateRideRequestStatus = async (req: Request, res: Response) => {
   try {
@@ -139,7 +189,7 @@ export const updateRideRequestStatus = async (req: Request, res: Response) => {
 export const createRide = async (req: Request, res: Response) => {
   try {
     const { driverId } = req.params;
-    const { userId, userLocation, destination } = req.body;
+    const { userId, vehicleId, userLocation, destination } = req.body;
 
     // Validation
     if (!driverId || !userId || !destination || !userLocation) {
@@ -184,13 +234,18 @@ export const createRide = async (req: Request, res: Response) => {
       return;
     }
 
-    console.log(driverDetails);
+    const vehicleType = driverDetails?.vehicle?.vehicleType;
 
     // Calculate the estimated fare
     const fare = calculateEstimatedFare(
       distance,
-      String(driverDetails?.vehicle?.vehicleType)
+      String(driverDetails?.vehicle?.vehicleType),
+      user_address.lat,
+      user_address.lng
     );
+
+    // Calculate the estimated time
+    const estimatedRideTime = getTimeService(userLocation, destination);
 
     // ^ Create a Ride Between the user and driver
     const result = await prisma.$transaction(async (tx) => {
@@ -203,21 +258,35 @@ export const createRide = async (req: Request, res: Response) => {
         },
       });
 
-      if (existingAcceptedRequest) {
+      if (!existingAcceptedRequest) {
         throw new AppError("Driver is not available", StatusCodes.BAD_REQUEST);
       }
+
+      const baseFareRate =
+        VehicleFare[vehicleType as keyof typeof VehicleFare] ||
+        VehicleFare.ECONOMY;
 
       const ride = await tx.ride.create({
         data: {
           userId,
           driverId,
-          curr_location: userLocation,
-          destination,
+          vehicleId,
+          pickupLocation: userLocation,
+          pickupLatitude: user_address.lat,
+          pickupLongitude: user_address.lng,
+          destinationAddress: destination,
+          destinationLat: user_destination.lat,
+          destinationLong: user_destination.lng,
           rideType: driverDetails?.vehicle?.vehicleType ?? VehicleType.ECONOMY,
           status: RideStatus.ACCEPTED,
-          distance,
-          fare,
-          // rideRequestId: existingAcceptedRequest?.id,
+          estimatedDistance: distance,
+          actualDistance: distance,
+          estimatedDuration: String(estimatedRideTime),
+          baseFare: baseFareRate,
+          distanceFare: distance * baseFareRate,
+          timeFare: existingAcceptedRequest.timeFare,
+          surgeFare: existingAcceptedRequest.surgeFare,
+          totalFare: existingAcceptedRequest.totalFare,
         },
         include: {
           driver: {
@@ -227,7 +296,6 @@ export const createRide = async (req: Request, res: Response) => {
         },
       });
 
-      // Todo: Increment the count of rides,earnings,distance and time for the driver
       await tx.driver.update({
         where: { id: driverId },
         data: { driverStatus: DriverStatus.UNAVAILABLE },
@@ -275,6 +343,51 @@ export const completedRide = async (req: Request, res: Response) => {
       data: { duration: duration },
     });
 
+    // TodoIncrement the count of rides,earnings,distance and time for the driver
+
+    const driverData = await prisma.ride.findUnique({
+      where: { id: rideId },
+
+      include: {
+        driver: {
+          select: {
+            total_time: true,
+            total_distance: true,
+            total_earnings: true,
+            total_rides: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!driverData) {
+      throw new AppError("Driver not found", StatusCodes.BAD_REQUEST);
+    }
+
+    const driverId = driverData.driverId;
+
+    await prisma.driver.update({
+      where: { id: driverId },
+      data: {
+        driverStatus: DriverStatus.AVAILABLE,
+        total_time: driverData.driver.total_time + duration,
+        total_distance:
+          driverData.driver.total_distance + response.estimatedDistance,
+        total_earnings: driverData.driver.total_earnings + response.totalFare,
+        total_rides: driverData.driver.total_rides + 1,
+      },
+    });
+
+    // Todo: Make payment to the driver
+    const userId = driverData.user.id;
+
+    await paymentService(driverId, userId, rideId);
+
     SuccessResponse.data = response;
     SuccessResponse.message = "Ride completed successfully";
     res.status(StatusCodes.OK).json(SuccessResponse);
@@ -285,8 +398,6 @@ export const completedRide = async (req: Request, res: Response) => {
     return;
   }
 };
-
-// Todo: Send a notification to the user that the ride is completed with in x minutes
 
 export const pickupController = async (req: Request, res: Response) => {
   try {

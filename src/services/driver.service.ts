@@ -1,6 +1,6 @@
 import { StatusCodes } from "http-status-codes";
 
-import { logger, prisma } from "../config";
+import { logger, prisma, redisClient } from "../config";
 import { locationService } from "./location.service";
 import AppError from "../utils/errors/app.error";
 import { log } from "console";
@@ -20,6 +20,27 @@ export const updateDriversLocation = async (
         curr_long: driverLocation.lng,
       },
     });
+
+    if (!updatedDriver) {
+      throw new AppError(
+        `Failed to update driver location: Driver not found`,
+        StatusCodes.NOT_FOUND
+      );
+    }
+
+    // Store the driver location in redis
+    // await redisClient.geoAdd("driver:locations", {
+    //   longitude: driverLocation.lng,
+    //   latitude: driverLocation.lat,
+    //   member: driverId,
+    // });
+
+    await redisClient.geoadd(
+      "driver:locations",
+      driverLocation.lng,
+      driverLocation.lat,
+      driverId
+    );
 
     logger.info(
       `Driver ${driverId} location updated: ${driverLocation.lat}, ${driverLocation.lng}`
@@ -60,6 +81,3 @@ export const getAvailableDrivers = async () => {
     );
   }
 };
-
-
-

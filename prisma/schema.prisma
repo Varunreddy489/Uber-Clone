@@ -58,14 +58,37 @@ enum NotificationType {
   PROMOTIONAL
 }
 
-model User {
-  id           String @id @default(cuid())
-  email        String @unique
-  name         String
-  phone_number String @unique
-  password     String
-  role         String @default("USER")
+enum TransactionType {
+  CREDIT
+  DEBIT
+}
 
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  UPI
+  WALLET
+  BANK_TRANSFER
+  CASH
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  phone_number String    @unique
+  password     String
+  role         String    @default("USER")
+  isOnline     Boolean   @default(false)
   // Profile information
   profileImage String?
   dateOfBirth  DateTime?
@@ -97,7 +120,6 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-
   Driver            Driver?
   RefreshToken      RefreshToken[]
   PasswordReset     PasswordReset[]
@@ -184,9 +206,6 @@ model Ride {
   driverId  String
   vehicleId String? @unique
 
-  curr_location String
-  destination   String
-
   // Location details
   pickupLocation     String
   pickupLatitude     Float
@@ -203,15 +222,13 @@ model Ride {
   pickupTime  DateTime?
   dropTime    DateTime?
 
-  distance Float
   duration Float?
-  fare     Float
 
   // Distance and fare
   estimatedDistance Float // in km
   actualDistance    Float? // in km
-  estimatedDuration Int // in minutes
-  actualDuration    Int? // in minutes
+  estimatedDuration String // in minutes
+  actualDuration    String? // in minutes
   baseFare          Float
   distanceFare      Float  @default(0.0)
   timeFare          Float  @default(0.0)
@@ -242,15 +259,21 @@ model Ride {
 }
 
 model RideRequest {
-  id           String            @id @default(cuid())
+  id           String @id @default(cuid())
   userId       String
   driverId     String
   userLocation String
   destination  String
-  fare         Float
-  distance     Float
-  vehicleType  VehicleType
-  status       RideRequestStatus @default(PENDING)
+
+  baseFare     Float
+  distanceFare Float @default(0.0)
+  timeFare     Float @default(0.0)
+  surgeFare    Float @default(0.0)
+  totalFare    Float
+
+  distance    Float
+  vehicleType VehicleType
+  status      RideRequestStatus @default(PENDING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -362,7 +385,7 @@ model WalletTransaction {
   transactionType TransactionType // CREDIT or DEBIT
   description     String?
 
-  // Securiity Audit  
+  // Security Audit  
   referenceId     String? @unique // External reference
   parentPaymentId String? // Link to payment if applicable
   balanceBefore   Decimal @db.Decimal(10, 2)
@@ -406,27 +429,4 @@ model Payment {
   @@index([rideId])
   @@index([gatewayTxnId])
   @@index([status, createdAt])
-}
-
-enum TransactionType {
-  CREDIT
-  DEBIT
-}
-
-enum PaymentStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-  REFUNDED
-  CANCELLED
-}
-
-enum PaymentMethod {
-  CREDIT_CARD
-  DEBIT_CARD
-  UPI
-  WALLET
-  BANK_TRANSFER
-  CASH
 }

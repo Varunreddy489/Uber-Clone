@@ -5,6 +5,8 @@ node_modules
 
 /dist
 
+/tests
+
 error.log
 
 combines.log
@@ -12,3 +14,16 @@ combines.log
 UBER ARCHITECTURE.jpeg
 
 a.txt
+test.ts
+
+features.md
+
+jest.config.js
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+settings.json

@@ -82,3 +82,21 @@ export const locationService = async (address: string) => {
   }
 };
 
+export const getTimeService = async (origin: string, destination: string) => {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin}&destinations=${destination}&key=${process.env.GOOGLE_MAPS_KEY}`;
+
+    const response = await axios.get(url);
+    const data = response.data;
+
+    console.log(data.rows[0].elements[0].duration.text);
+    return data.rows[0].elements[0].duration.text;
+  } catch (error: any) {
+    throw new AppError(
+      "Error in getTimeService: " + error.message,
+      StatusCodes.INTERNAL_SERVER_ERROR
+    );
+  }
+};
+
+getTimeService("potheri railway station", "chennai central");
