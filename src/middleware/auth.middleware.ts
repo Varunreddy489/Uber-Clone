@@ -50,7 +50,7 @@ export const checkAuth = async (
     // If the token is invalid, return an unauthorized response
     if (!decodedToken) {
       res.status(400).json({
-        error: "Unauthorised - Invalid Token",
+        error: "Unauthorized - Invalid Token",
       });
       return;
     }

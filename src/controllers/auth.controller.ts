@@ -142,7 +142,7 @@ export const loginUser = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findFirst({
       where: {
-        OR: [{ email: identifier.lowerCase() }, { phone_number: identifier }],
+        OR: [{ email: identifier.toLowerCase() }, { phone_number: identifier }],
       },
       include: {
         Driver: true, // Include driver info if exists
@@ -169,7 +169,6 @@ export const loginUser = async (req: Request, res: Response) => {
       user.role
     );
 
-    // Set secure cookies
     setTokenCookies(res, accessToken, refreshToken);
 
     // Update last login
@@ -178,8 +177,7 @@ export const loginUser = async (req: Request, res: Response) => {
       data: { lastLoginAt: new Date() },
     });
 
-    // Remove sensitive data
-    const { password: _, ...userWithoutPassword } = user;
+    const { id, name } = user;
 
     // Send a Registration Success email
     const emailPayload = {
@@ -191,7 +189,7 @@ export const loginUser = async (req: Request, res: Response) => {
     await sendEmail(emailPayload);
 
     SuccessResponse.data = {
-      user: userWithoutPassword,
+      user: { id, name },
       accessToken,
     };
     SuccessResponse.message = "Login successful";
@@ -216,12 +214,13 @@ export const logoutUser = async (req: Request, res: Response) => {
     return;
   } catch (error: any) {
     ErrorResponse.error = error;
-    logger.error("Error in getAllAvailableRides:", error);
+    logger.error("Error in logoutUser:", error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json(ErrorResponse);
     return;
   }
 };
 
+//  Refreshes the access token using the provided refresh token.
 export const refreshToken = async (req: Request, res: Response) => {
   try {
     const refreshToken = req.cookies?.refreshToken || req.body.refreshToken;
