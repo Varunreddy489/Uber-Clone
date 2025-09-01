@@ -1,5 +1,6 @@
 export * from "./ride.service";
 export * from "./fare.service";
+export * from "./auth.service";
 export * from "./mail.service";
 export * from "./driver.service";
 export * from "./weather.service";
