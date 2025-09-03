@@ -89,7 +89,6 @@ export const getTimeService = async (origin: string, destination: string) => {
     const response = await axios.get(url);
     const data = response.data;
 
-    console.log(data.rows[0].elements[0].duration.text);
     return data.rows[0].elements[0].duration.text;
   } catch (error: any) {
     throw new AppError(
@@ -98,5 +97,3 @@ export const getTimeService = async (origin: string, destination: string) => {
     );
   }
 };
-
-getTimeService("potheri railway station", "chennai central");

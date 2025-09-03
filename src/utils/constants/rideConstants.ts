@@ -8,3 +8,4 @@ export const VehicleFare = {
 
 export const DriverRadius = 5;
 
+export const RideRequestAcceptTime = 2 * 60 * 1000; // 2 minutes in milliseconds

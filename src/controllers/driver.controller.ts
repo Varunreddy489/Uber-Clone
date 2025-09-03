@@ -1,14 +1,14 @@
-import fs from "fs/promises";
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 
 import {
-  cloudinaryService,
+  createDriverService,
   getAvailableDrivers,
-  sendEmail,
+  requestUpdateService,
   updateDriversLocation,
+  vehicleRegisterService,
 } from "../services";
-import { logger, prisma, redisClient } from "../config";
+import { logger, prisma } from "../config";
 import { ErrorResponse, SuccessResponse } from "../utils/common";
 
 /**
@@ -16,6 +16,7 @@ import { ErrorResponse, SuccessResponse } from "../utils/common";
  * Updates the driver's location in the database and responds with the updated driver data.
  * Logs the updated driver location on success or an error message on failure.
  */
+
 export const updateDriversLocationController = async (
   req: Request,
   res: Response
@@ -102,89 +103,49 @@ export const getDriverByIdController = async (req: Request, res: Response) => {
   }
 };
 
-export const createDriver = async (req: Request, res: Response) => {
+export const updateRequestController = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params;
+    const { rideRequestId } = req.params;
+    const { status } = req.body;
 
-    const { LicenseNumber } = req.body;
+    const response = await requestUpdateService(rideRequestId, status);
 
-    if (!userId) {
-      ErrorResponse.error = "User ID is required";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
+    // Todo: Send Notification to The Passenger about the status
 
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      ErrorResponse.error = "User not found";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    if (!LicenseNumber) {
-      ErrorResponse.error = "License Number is required";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    if (!req.files) {
-      ErrorResponse.error = "All fields are required";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    const files = req.files as {
-      [fieldname: string]: Express.Multer.File[];
-    };
-
-    const licenseImage = files["LicenseImage"]?.[0];
-    const govtProof = files["govt_proof"]?.[0];
-
-    if (!licenseImage || !govtProof) {
-      ErrorResponse.error = "All fields are required";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    const license_url = await cloudinaryService(licenseImage.path);
-    const govt_url = await cloudinaryService(govtProof.path);
-
-    await fs.unlink(licenseImage.path);
-    await fs.unlink(govtProof.path);
-
-    const driver = await prisma.driver.create({
-      data: {
-        userId,
-        phone_number: user?.phone_number,
-        LicenseNumber,
-        LicenseImage: license_url,
-        Proof: govt_url,
-      },
-    });
-
-    const emailPayload = {
-      toMail: user.email,
-      subject: "We Received Your Application",
-      body: `
-      <div style="background-color: #f2f2f2; padding: 20px; text-align: center;">
-      <p style="color: #666;">Hello ${user.name},</p>
-        <p style="color: #333;">We Received Your Application.We will verify and approve your application soon.  </p>`,
-    };
-
-    await sendEmail(emailPayload);
-
-    SuccessResponse.data = driver;
-    logger.error("Driver created:", SuccessResponse.data);
+    SuccessResponse.data = response;
+    SuccessResponse.message = "Ride request status updated successfully";
     res.status(StatusCodes.OK).json(SuccessResponse);
+    return;
   } catch (error: any) {
     ErrorResponse.error = error;
-    logger.error("Error in createDriver:", error);
-    console.error("Error in createDriver:", error);
+    logger.error("Error in getDriverByIdController:", error);
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json(ErrorResponse);
     return;
+  }
+};
+
+export const createDriver = async (req: Request, res: Response) => {
+  try {
+    const userId = req.user.userId;
+    const { LicenseNumber } = req.body;
+
+    const driver = await createDriverService(
+      userId,
+      LicenseNumber,
+      req.files as any
+    );
+
+    // Todo: Send Notification to The Driver for Joining the Platform
+
+    SuccessResponse.data = driver;
+    SuccessResponse.message = "Driver created successfully";
+    res.status(StatusCodes.OK).json(SuccessResponse);
+  } catch (error: any) {
+    ErrorResponse.error = error.message || "Internal Server Error";
+    logger.error("Error in createDriver:", error);
+    res
+      .status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR)
+      .json(ErrorResponse);
   }
 };
 
@@ -195,6 +156,9 @@ export const toggleDriverStatusController = async (
   try {
     const { driverId } = req.params;
     const { isActive } = req.body;
+
+    // Todo: Send Notification to The Driver About his status
+
     const updatedDriver = await prisma.driver.update({
       where: { id: driverId },
       data: { isActive },
@@ -243,58 +207,22 @@ export const registerVehicle = async (req: Request, res: Response) => {
     const { driverId } = req.params;
     const { vehicleNo, vehicleType, company, model, seatCapacity } = req.body;
 
-    if (!driverId) {
-      ErrorResponse.error = "Driver ID is required";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    const driver = await prisma.driver.findUnique({
-      where: { id: driverId },
-    });
-
-    if (!driver) {
-      ErrorResponse.error = "Driver not found";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    if (!req.files) {
-      ErrorResponse.error = "All fields are required";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    const files = req.files as {
-      [fieldname: string]: Express.Multer.File[];
-    };
-
-    const vehicleImage = files["vehicleImage"]?.[0];
-
-    if (!vehicleImage) {
-      ErrorResponse.error = "All fields are required";
-      res.status(StatusCodes.BAD_REQUEST).json(ErrorResponse);
-      return;
-    }
-
-    const vehicleImage_url = await cloudinaryService(vehicleImage.path);
-
-    await fs.unlink(vehicleImage.path);
-
-    const updatedDriver = await prisma.vehicle.create({
-      data: {
-        driverId,
+    const vehicle = await vehicleRegisterService(
+      driverId,
+      {
         vehicleNo,
         vehicleType,
         company,
         model,
-        seatCapacity,
-        vehicleImage: vehicleImage_url,
+        seatCapacity: Number(seatCapacity),
       },
-    });
+      req.files as any
+    );
 
-    SuccessResponse.data = updatedDriver;
-    logger.error("Driver status updated:", SuccessResponse.data);
+    // Todo: Send Notification to The Driver About his vehicle
+
+    SuccessResponse.data = vehicle;
+    SuccessResponse.message = "Vehicle registered successfully";
     res.status(StatusCodes.OK).json(SuccessResponse);
   } catch (error: any) {
     ErrorResponse.error = error;

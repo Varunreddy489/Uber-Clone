@@ -10,11 +10,23 @@ import {
   resetUserPasswordService,
 } from "../services";
 import { logger } from "../config";
+import { NotificationType } from "../generated/prisma";
+import { notificationMessages } from "../utils/constants";
 import { ErrorResponse, SuccessResponse } from "../utils/common";
+import { createNotification } from "../services/notification.service";
 
 export const registerUser = async (req: Request, res: Response) => {
   try {
     const { user, accessToken } = await userRegisterService(res, req.body);
+
+    const data = {
+      userId: user.id,
+      title: notificationMessages.USER_REGISTERED(user.name).title,
+      message: notificationMessages.USER_REGISTERED(user.name).message,
+      category: NotificationType.REGISTRATION_SUCCESS,
+    };
+    // Create a notification for successful registration
+    await createNotification(data);
 
     SuccessResponse.data = { user, accessToken };
     SuccessResponse.message = "User registered successfully";
@@ -32,6 +44,15 @@ export const registerUser = async (req: Request, res: Response) => {
 export const loginUser = async (req: Request, res: Response) => {
   try {
     const { user, accessToken } = await userLoginService(res, req.body);
+
+    const data = {
+      userId: user.id,
+      title: notificationMessages.LOGIN_SUCCESSFUL().title,
+      message: notificationMessages.LOGIN_SUCCESSFUL().message,
+      category: NotificationType.REGISTRATION_SUCCESS,
+    };
+    // Create a notification for successful registration
+    await createNotification(data);
 
     SuccessResponse.data = { user, accessToken };
     SuccessResponse.message = "User logged in successfully";
@@ -83,9 +104,19 @@ export const refreshToken = async (req: Request, res: Response) => {
 
 export const forgotPassword = async (req: Request, res: Response) => {
   try {
+    const userId = req.user.userId;
     const { email } = req.body;
 
     forgotPasswordService(email);
+
+    const data = {
+      userId: userId,
+      title: notificationMessages.FORGOT_PASSWORD().title,
+      message: notificationMessages.FORGOT_PASSWORD().message,
+      category: NotificationType.REGISTRATION_SUCCESS,
+    };
+    // Create a notification for successful registration
+    await createNotification(data);
 
     SuccessResponse.message = "OTP sent successfully! Please Check your email";
     res.status(StatusCodes.OK).json(SuccessResponse);
@@ -105,6 +136,15 @@ export const verifyOTP = async (req: Request, res: Response) => {
 
     const user = await otpVerificationService(userId, emailVerificationToken);
 
+    const data = {
+      userId: userId,
+      title: notificationMessages.OTP_VERIFIED().title,
+      message: notificationMessages.OTP_VERIFIED().message,
+      category: NotificationType.REGISTRATION_SUCCESS,
+    };
+    // Create a notification for successful registration
+    await createNotification(data);
+
     SuccessResponse.data = user;
     SuccessResponse.message = "OTP verified successfully";
     res.status(StatusCodes.OK).json(SuccessResponse);
@@ -122,6 +162,15 @@ export const resetPassword = async (req: Request, res: Response) => {
     const userId = req.user.userId;
 
     const data = { userId, ...req.body };
+
+    const mailData = {
+      userId: userId,
+      title: notificationMessages.PASSWORD_RESET().title,
+      message: notificationMessages.PASSWORD_RESET().message,
+      category: NotificationType.REGISTRATION_SUCCESS,
+    };
+    // Create a notification for successful registration
+    await createNotification(mailData);
 
     await resetUserPasswordService(data);
 

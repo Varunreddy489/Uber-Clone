@@ -1,4 +1,8 @@
-import { RideRequestStatus, VehicleType } from "../../generated/prisma";
+import {
+  VehicleType,
+  NotificationType,
+  RideRequestStatus,
+} from "../../generated/prisma";
 
 export type User = {
   id: string;
@@ -77,4 +81,25 @@ export interface WeatherConditions {
   snow?: boolean;
   storm?: boolean;
   temperature?: number;
+}
+
+export type RatingData = {
+  rideId: string;
+  driverId: string;
+  userId: string;
+  rating: number;
+  comment?: string;
+};
+
+export interface NotificationData {
+  userId: string;
+  title: string;
+  message: string;
+  category?: string;
+  type?: NotificationType;
+  metadata?: Record<string, any>;
+  priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
+  sendPush?: boolean;
+  sendEmail?: boolean;
+  sendSMS?: boolean;
 }

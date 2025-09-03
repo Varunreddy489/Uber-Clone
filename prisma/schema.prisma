@@ -18,14 +18,17 @@ enum RideStatus {
   PENDING
   ACCEPTED
   IN_PROGRESS
+  ARRIVED
   COMPLETED
   CANCELLED
+  REFUNDED
 }
 
 enum DriverStatus {
   AVAILABLE
   UNAVAILABLE
   ON_RIDE
+  OFFLINE
 }
 
 enum RideRequestStatus {
@@ -49,13 +52,19 @@ enum RoleChangeRequestTypes {
 }
 
 enum NotificationType {
+  REGISTRATION_SUCCESS
+  LOGIN_SUCCESSFUL
+  PASSWORD_RESET
+  OTP_VERIFIED
   RIDE_REQUEST
   RIDE_ACCEPTED
+  DRIVER_ARRIVED
+  RIDE_STARTED
   RIDE_COMPLETED
-  PAYMENT_RECEIVED
+  RIDE_CANCELED
+  PAYMENT_SUCCESSFUL
   DRIVER_VERIFICATION
-  SYSTEM_ALERT
-  PROMOTIONAL
+  WALLET_TOPUP_SUCCESS
 }
 
 enum TransactionType {
@@ -130,6 +139,7 @@ model User {
   Notifications     Notifications[]
   Wallet            Wallet?
   Payment           Payment[]
+  DriverRating      DriverRating[]
 
   @@index([id, phone_number])
   @@index([email])
@@ -140,7 +150,7 @@ model Driver {
   id           String @id @default(cuid())
   userId       String @unique
   phone_number String @unique
-  rating       String @default("0")
+  rating       Float  @default(0.0)
 
   isActive     Boolean @default(true)
   driverStatus String  @default("AVAILABLE")
@@ -167,10 +177,11 @@ model Driver {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user        User          @relation(fields: [userId], references: [id])
-  ride        Ride[]
-  vehicle     Vehicle?
-  RideRequest RideRequest[]
+  user         User           @relation(fields: [userId], references: [id])
+  ride         Ride[]
+  vehicle      Vehicle?
+  RideRequest  RideRequest[]
+  DriverRating DriverRating[]
 
   @@index([driverStatus])
   @@index([curr_lat, curr_long])
@@ -230,9 +241,9 @@ model Ride {
   estimatedDuration String // in minutes
   actualDuration    String? // in minutes
   baseFare          Float
-  distanceFare      Float  @default(0.0)
-  timeFare          Float  @default(0.0)
-  surgeFare         Float  @default(0.0)
+  distanceFare      Float   @default(0.0)
+  timeFare          Float   @default(0.0)
+  surgeFare         Float   @default(0.0)
   totalFare         Float
 
   // Trip details
@@ -247,11 +258,12 @@ model Ride {
   updatedAt DateTime @updatedAt
 
   // Relations
-  user        User         @relation(fields: [userId], references: [id])
-  driver      Driver       @relation(fields: [driverId], references: [id])
-  vehicle     Vehicle?     @relation(fields: [vehicleId], references: [id])
-  rideRequest RideRequest? @relation(fields: [rideRequestId], references: [id])
-  Payment     Payment[]
+  user         User          @relation(fields: [userId], references: [id])
+  driver       Driver        @relation(fields: [driverId], references: [id])
+  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id])
+  rideRequest  RideRequest?  @relation(fields: [rideRequestId], references: [id])
+  Payment      Payment[]
+  DriverRating DriverRating?
 
   @@index([status])
   @@index([driverId, status])
@@ -271,9 +283,10 @@ model RideRequest {
   surgeFare    Float @default(0.0)
   totalFare    Float
 
-  distance    Float
-  vehicleType VehicleType
-  status      RideRequestStatus @default(PENDING)
+  distance      Float
+  estimatedTime String
+  vehicleType   VehicleType
+  status        RideRequestStatus @default(PENDING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -283,9 +296,30 @@ model RideRequest {
   driver Driver @relation(fields: [driverId], references: [id])
   ride   Ride?
 
+  @@index([driverId, userId])
   @@index([userId, status])
   @@index([driverId, status])
   @@index([createdAt])
+}
+
+model DriverRating {
+  id       String  @id @default(cuid())
+  rideId   String  @unique
+  userId   String
+  driverId String
+  rating   Float
+  comments String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id])
+  driver Driver @relation(fields: [driverId], references: [id])
+  ride   Ride   @relation(fields: [rideId], references: [id])
+
+  @@index([userId])
+  @@index([driverId])
+  @@index([rating])
 }
 
 model RefreshToken {
@@ -353,7 +387,7 @@ model Notifications {
   message String
   isRead  Boolean @default(false)
 
-  category String?
+  category NotificationType
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

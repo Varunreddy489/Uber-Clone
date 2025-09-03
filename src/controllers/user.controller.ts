@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
-import { ErrorResponse, SuccessResponse } from "../utils/common";
-import { logger, prisma } from "../config";
 import { StatusCodes } from "http-status-codes";
-import { UserRoles } from "../generated/prisma";
+
 import { sendEmail } from "../services";
+import { logger, prisma } from "../config";
+import { UserRoles } from "../generated/prisma";
+import { ErrorResponse, SuccessResponse } from "../utils/common";
 
 export const changeRole = async (req: Request, res: Response) => {
   try {
