@@ -1,0 +1,46 @@
+# Dependencies
+node_modules
+
+# Build outputs
+dist
+
+# Logs
+*.log
+combines.log
+error.log
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Testing
+tests
+coverage
+.nyc_output
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+features.md
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Database
+*.db
+dump.rdb
+
+# Temporary files
+*.tmp
+*.temp

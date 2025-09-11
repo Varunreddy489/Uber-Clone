@@ -1,0 +1,71 @@
+version: "3.8"
+services:
+  app:
+    build: .
+    container_name: uber-clone_app
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/UBER_CLONE
+      - JWT_SECRET=UNDETECTABLE_SECRET
+      - NODE_ENV=development
+      - PORT=5000
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/dist
+
+    restart: unless-stopped
+    networks:
+      - uber-network
+    command: ["pnpm", "dev"]
+
+  db:
+    image: postgres:16-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: UBER_CLONE
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - uber-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d UBER_CLONE"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-db
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - uber-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  uber-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
