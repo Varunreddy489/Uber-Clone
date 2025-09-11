@@ -11,7 +11,6 @@ const router = Router();
 
 /**
  * @openapi
- * paths:
  *   /api/v1/wallet/topup/intent:
  *     post:                                # & /api/v1/wallet/topup/intent POST
  *       tags: [Wallet]
@@ -147,8 +146,90 @@ const router = Router();
  */
 // & /api/v1/wallet/topup/intent POST
 router.post("/topup/intent", createWalletTopUpIntent);
-// * /api/v1/wallet/topup/success GET
-router.get("/topup/intent", walletTopUpSuccess);
+
+/**
+ * @openapi
+ * /api/v1/wallet/topup/success:
+ *   post:
+ *     tags: [Wallet]
+ *     summary: Wallet Top-up Success
+ *     description: Confirms a successful wallet top-up after Stripe payment succeeds and updates the wallet balance and transactions.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               paymentIntentId:
+ *                 type: string
+ *                 description: The Stripe payment intent ID
+ *             required:
+ *               - paymentIntentId
+ *     responses:
+ *       "200":
+ *         description: Wallet top-up successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                   example: Wallet top-up successful
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     wallet:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         balance:
+ *                           type: number
+ *                         userId:
+ *                           type: string
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                         updatedAt:
+ *                           type: string
+ *                           format: date-time
+ *                     transaction:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         walletId:
+ *                           type: string
+ *                         amount:
+ *                           type: number
+ *                         transactionType:
+ *                           type: string
+ *                           example: CREDIT
+ *                         description:
+ *                           type: string
+ *                           example: Wallet top-up via Stripe
+ *                         referenceId:
+ *                           type: string
+ *                         balanceBefore:
+ *                           type: number
+ *                         balanceAfter:
+ *                           type: number
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *       "400":
+ *         description: Payment intent ID is required or invalid payment
+ *       "404":
+ *         description: Wallet not found
+ *       "500":
+ *         description: Internal server error
+ */
+// * /api/v1/wallet/topup/success POST
+router.post("/topup/success", walletTopUpSuccess);
 
 /**
  * @openapi
@@ -160,7 +241,7 @@ router.get("/topup/intent", walletTopUpSuccess);
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       200:
+ *       "200":
  *         description: Successfully fetched user wallet stats
  *         content:
  *           application/json:
@@ -220,12 +301,11 @@ router.get("/topup/intent", walletTopUpSuccess);
  *                             type: string
  *                             format: date-time
  *                             example: "2025-08-31T10:15:00Z"
- *       401:
+ *       "401":
  *         description: Unauthorized - User not authenticated
- *       500:
+ *       "500":
  *         description: Server error while fetching wallet stats
  */
-
 // * /api/v1/wallet/user GET
 router.get("/user", userWalletStats);
 
@@ -233,7 +313,7 @@ router.get("/user", userWalletStats);
  * @openapi
  * /api/v1/wallet/driver:
  *   get:
- *     tags: [Wallet]
+ *     tags: [Driver]
  *     summary: Get Driver Wallet Stats
  *     description: Fetch the wallet details of a driver, including the last 10 wallet transactions.
  *     security:
@@ -246,7 +326,7 @@ router.get("/user", userWalletStats);
  *         required: true
  *         description: The ID of the driver whose wallet stats are being requested
  *     responses:
- *       200:
+ *       "200":
  *         description: Successfully fetched driver wallet stats
  *         content:
  *           application/json:
@@ -306,14 +386,13 @@ router.get("/user", userWalletStats);
  *                             type: string
  *                             format: date-time
  *                             example: "2025-08-31T12:00:00Z"
- *       400:
+ *       "400":
  *         description: Missing or invalid driverId
- *       401:
+ *       "401":
  *         description: Unauthorized - User not authenticated
- *       500:
+ *       "500":
  *         description: Server error while fetching driver wallet stats
  */
-
 // * /api/v1/wallet/driver GET
 router.get("/driver", driverWalletStats);
 
@@ -334,6 +413,7 @@ router.get("/driver", driverWalletStats);
  *             type: object
  *             required:
  *               - paymentId
+ *               - amount
  *             properties:
  *               paymentId:
  *                 type: string
@@ -342,7 +422,7 @@ router.get("/driver", driverWalletStats);
  *                 type: number
  *                 example: 200
  *     responses:
- *       200:
+ *       "200":
  *         description: Refund processed successfully
  *         content:
  *           application/json:
@@ -364,11 +444,11 @@ router.get("/driver", driverWalletStats);
  *                     refund:
  *                       type: object
  *                       description: Stripe refund details
- *       400:
+ *       "400":
  *         description: Invalid refund amount or payment not eligible
- *       404:
+ *       "404":
  *         description: Payment not found
- *       500:
+ *       "500":
  *         description: Server error while processing refund
  */
 // * /api/v1/wallet/refund POST

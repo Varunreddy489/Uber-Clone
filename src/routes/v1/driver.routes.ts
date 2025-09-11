@@ -20,14 +20,33 @@ const router = Router();
  *     tags: [Driver]
  *     summary: Get all available drivers
  *     responses:
- *       200:
+ *       "200":
  *         description: List of drivers
  *         content:
  *           application/json:
- *       500:
- *          description: Internal server error
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       "500":
+ *         description: Internal server error
  *         content:
  *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 error:
+ *                   type: string
+ *                   example: "Internal server error"
  */
 // * /api/v1/driver/ GET
 router.get("/", getAllAvailableDriversController);
@@ -370,6 +389,8 @@ router.put(
  *                   type: string
  *                   example: "Unexpected error occurred"
  */
+router.get("/:driverId", getDriverByIdController);
+
 
 /**
  * @openapi
@@ -639,6 +660,6 @@ router.get("/:driverId/status", getStatus);
  *                   example: "error in vehicleRegisterService: Internal Server Error"
  */
 // ~ /api/v1/driver/:driverId/vehicle POST
-router.post("/:driverId", registerVehicle);
+router.post("/:driverId/vehicle", registerVehicle);
 
 export { router as driverRoutes };
